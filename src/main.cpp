@@ -25,13 +25,15 @@ void initialize(){
 
 std::string GetExecutableDirectory() {
     char buffer[PATH_MAX];
+
     ssize_t len = readlink("/proc/self/exe", buffer, sizeof(buffer) - 1);
-    if (len != -1) {
-        buffer[len] = '\0';
-        std::string path(buffer);
-        return path.substr(0, path.find_last_of("/"));
+    if (len == -1) {
+        throw std::runtime_error("readlink failed");
     }
-    return "";
+    buffer[len] = '\0';
+
+    std::string path(buffer);
+    return path.substr(0, path.find_last_of("/\\"));
 }
 
 std::string GetParentDirectory(const std::string& directory) {
@@ -41,7 +43,6 @@ std::string GetParentDirectory(const std::string& directory) {
     }
     return "";
 }
-
 
 int main(){
     GAME_PATH = GetParentDirectory(GetExecutableDirectory());

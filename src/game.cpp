@@ -6,7 +6,7 @@ std::vector<Object*> animatedStack;
 // Debug
 const bool debug = false;
 bool fastNights = false;
-bool handyMan = true;
+bool handyMan = false;
 bool clearCameras = false;
 
 // Engine variables
@@ -22,7 +22,7 @@ int gameMode = 3;
 
 // Game variables
 bool winCondition = false;
-int night = 3;
+int night = 1;
 int hour = 0;
 int luresUsed = 0;
 float cameraBlindness = 0;

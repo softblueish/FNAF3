@@ -4,7 +4,7 @@ BUILD_DIR = build
 BIN_DIR = bin
 ASSETS_DIR = assets
 INSTALL_DIR = /opt/fnaf3
-APP_NAME = fnaf3
+APP_NAME = fnaf3.exe
 
 # Source files
 SRC_FILES = main.cpp graphics.cpp game.cpp objects.cpp audio.cpp
