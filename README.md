@@ -22,3 +22,4 @@ If it's not listed, you are safe to assume it works.
 - Phantom Mangle
 - Phantom Puppet
 - Phantom Chica
+- Savefiles
