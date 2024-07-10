@@ -26,12 +26,15 @@ void initialize(){
 std::string GetExecutableDirectory() {
     char buffer[PATH_MAX];
 
+    #ifdef _WIN32
+    GetModuleFileName(NULL, buffer, sizeof(buffer));
+    #else
     ssize_t len = readlink("/proc/self/exe", buffer, sizeof(buffer) - 1);
     if (len == -1) {
         throw std::runtime_error("readlink failed");
     }
     buffer[len] = '\0';
-
+    #endif
     std::string path(buffer);
     return path.substr(0, path.find_last_of("/\\"));
 }
