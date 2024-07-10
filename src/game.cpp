@@ -6,7 +6,8 @@ std::vector<Object*> animatedStack;
 // Debug
 const bool debug = false;
 bool fastNights = false;
-bool handyMan = false;
+bool handyMan = true;
+bool clearCameras = false;
 
 // Engine variables
 float deltaTime = 0;
@@ -21,7 +22,7 @@ int gameMode = 3;
 
 // Game variables
 bool winCondition = false;
-int night = 1;
+int night = 3;
 int hour = 0;
 int luresUsed = 0;
 float cameraBlindness = 0;
@@ -83,6 +84,25 @@ int springtrapOnCamera = 7;
 int springtrapOnVentCamera = 0;
 bool springtrapInVents = true;
 int springSkin = 0;
+int aggressive = 0;
+int springAI = 0;
+int springTotalTurns = 0;
+int movementCounter;
+int lastSpringMoveCounter = 0;
+bool hasSpringtrapSpawned = false;
+std::vector<int> cameraSpringMovementIndex[10][2] = {
+    {{-1}, {1}}, // Cam 1
+    {{0}, {2, 4}}, // Cam 2
+    {{1}, {3}}, // Cam 3
+    {{2}, {4}}, // Cam 4
+    {{3, 1}, {5, 7}}, // Cam 5
+    {{4}, {6}}, // Cam 6
+    {{5}, {7}}, // Cam 7
+    {{6, 4}, {8}}, // Cam 8
+    {{7}, {9}}, // Cam 9
+    {{8}, {9}} // Cam 10
+
+};
 
 // Toolbox repairing and errors
 bool cameraError = false;
@@ -939,6 +959,7 @@ void setDefaultValues() {
     jumpscarePassiveness = 0;
     timeSinceLastPressedVentButton;
     totalBlackout = false;
+    danger = false;
 
     cameraOpen = false;
     forceCameraOpen = false;
@@ -981,6 +1002,8 @@ void setDefaultValues() {
     springtrapOnVentCamera = 0;
     springtrapInVents = false;
     springSkin = 0;
+    int aggressive = 0;
+    hasSpringtrapSpawned = false;
 
     // Toolbox repairing and errors
     cameraError = false;
@@ -1017,7 +1040,7 @@ void setDefaultValues() {
 }
 
 void menuTick(){
-
+    // Menu
 }
 
 void inGameTick(){
@@ -1043,6 +1066,54 @@ void inGameTick(){
         springtrapInVents = false;
         springtrapOnCamera = -1;
         springtrapOnVentCamera = -1;
+    }
+
+    // Springtrap movement
+    if(night != 1){
+        if(springtrapOnCamera = -1) {
+            // Springtrap is in office
+        }
+        if(timePassedSinceNightStart - lastSpringMoveCounter > 1000 && springtrapOnCamera != -1){
+            movementCounter++;
+            if(aggressive==1) movementCounter++;
+            lastSpringMoveCounter = timePassedSinceNightStart;
+            springAI = night;
+            if(night == 6) springAI = 7;
+            std::cout << "Movement counter: " << movementCounter << "\n";
+            if(movementCounter > 10 - springAI - aggressive + rand() % 16 - springTotalTurns) {
+                cameraGlitch.currentAnimation->isPlaying = true;
+                movementCounter = 0;
+                std::cout << "Movement check passed\n";
+                int springDecision = rand() % (4 + aggressive);
+                switch(springDecision){
+                    case 0:
+                        // Springtrap fails movement opportunity
+                        std::cout << "Movement opportunity failed" << std::endl;
+                        break;
+                    case 1:
+                        // Springtrap moves forward
+                        springtrapOnCamera = cameraSpringMovementIndex[springtrapOnCamera][0][rand() % cameraSpringMovementIndex[springtrapOnCamera][0].size()];
+                        springSkin = rand() % 2;
+                        springTotalTurns = 0;
+                        std::cout << "Springtrap moved forward to CAM " << springtrapOnCamera + 1 << " with springskin value " << springSkin << std::endl;
+                        break;
+                    case 2:
+                        // Springtrap moves backwards
+                        springtrapOnCamera = cameraSpringMovementIndex[springtrapOnCamera][1][rand() % cameraSpringMovementIndex[springtrapOnCamera][1].size()];
+                        springSkin = rand() % 2;
+                        springTotalTurns = 0;
+                        std::cout << "Springtrap moved backwards to CAM" << springtrapOnCamera + 1 << " with springskin value " << springSkin << std::endl;
+                        break;
+                    case 4:
+                        // Springtrap moves into vents (yet to be implemented)
+                        std::cout << "Springtrap moved into vents" << std::endl;
+                        break;
+                    default:
+                        std::cout << "Movement opportunity failed (Invalid Springtrap decision, " << springDecision << ")" << std::endl;
+                        break;
+                }
+            }
+        }
     }
 
     // Ventilation degradation
@@ -1090,9 +1161,12 @@ void inGameTick(){
     // Danger
     if(!danger&&(foxyInOffice||springtrapInVents)&&hasPhoneDudeSpoken){
         danger = true;
-        Mix_PlayChannel(2, soundList[21], -1);
+        Mix_PlayChannel(4, soundList[21], -1);
     } else {
-        if(!(foxyInOffice||springtrapInVents)) danger = false;
+        if(!(foxyInOffice||springtrapInVents)) {
+            danger = false;
+            Mix_HaltChannel(4);
+        };
     }
 
     // Foxy chance
@@ -1575,7 +1649,7 @@ void inGameTick(){
     if(cameraOpen == true && cameraMonitor.currentAnimation->isPlaying == false){ // Post animation manager when camera is open
         cameraUsetime += deltaTime;
         Mix_Volume(0, (int)(128 * (((float)cameraStatic.opacity/100))));
-        cameraStatic.setVisibility(true);
+        cameraStatic.setVisibility(!clearCameras);
         cameraLargeButtonFrame[1].clickable = !ventBeingSealed;
         if(audioDeviceError) cameraAudioDeviceErrorText.setVisibility(true);
         if(cameraError) cameraVideoErrorText.setVisibility(true);
