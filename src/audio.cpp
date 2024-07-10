@@ -2,7 +2,7 @@
 
 /*
     Channel 0: Camera static / Heavy breathing
-    Channel 1: Phone dude
+    Channel 1: Phone dude / Danger
     Channel 2: Fan
     Channel 3: Ambience
     Channel 4: Button sounds / Jumpscare

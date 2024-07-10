@@ -39,6 +39,7 @@ float jumpscareLinger = 0;
 float jumpscarePassiveness = 0;
 unsigned int timeSinceLastPressedVentButton;
 bool totalBlackout = false;
+bool danger = false;
 
 bool cameraOpen = false;
 bool forceCameraOpen = false;
@@ -978,7 +979,7 @@ void setDefaultValues() {
     // Springtrap variables
     springtrapOnCamera = 7;
     springtrapOnVentCamera = 0;
-    springtrapInVents = true;
+    springtrapInVents = false;
     springSkin = 0;
 
     // Toolbox repairing and errors
@@ -1037,6 +1038,13 @@ void inGameTick(){
         lastVentilationPenaltyHit = 0;
     }
 
+    // Hide springtrap if it's night 1
+    if(night == 1) {
+        springtrapInVents = false;
+        springtrapOnCamera = -1;
+        springtrapOnVentCamera = -1;
+    }
+
     // Ventilation degradation
     switch(night){
         case 2:
@@ -1078,6 +1086,14 @@ void inGameTick(){
     }
 
     if(ventilationHealth <= -10) ventilationError = true;
+
+    // Danger
+    if(!danger&&(foxyInOffice||springtrapInVents)&&hasPhoneDudeSpoken){
+        danger = true;
+        Mix_PlayChannel(2, soundList[21], -1);
+    } else {
+        if(!(foxyInOffice||springtrapInVents)) danger = false;
+    }
 
     // Foxy chance
     switch(night){
