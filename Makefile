@@ -1,4 +1,4 @@
-all: compile run
+all: compile run clean
 
 compile:
 	g++ -c -o build/main.o src/main.cpp

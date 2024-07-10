@@ -892,6 +892,7 @@ void setObjectSettings(){
     cameraGlitch.currentAnimation->isPlaying = true;
     cameraGlitch.currentSecondaryAnimation->isPlaying = true; 
     cameraMonitor.currentAnimation->isPlaying = false;
+    ventSealingAnimation.currentAnimation->isPlaying = false;
 }
 
 void setDefaultValues() {
