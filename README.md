@@ -5,7 +5,7 @@ This is a passion project. I love FNAF 3 and wanted to see it ported to other sy
 Press **Enter** to Fullscreen. I assume you know how to play FNAF 3.
 ## How to build
 ```
-make compile
+make
 ```
 ## How to install
 ```
