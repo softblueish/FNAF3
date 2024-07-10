@@ -13,7 +13,7 @@ make compile
 make install
 make clean
 ```
-You can uninstall with ``make uninstall``
+You can uninstall with ``make uninstall``. If you only want to run it ``make all`` works too.
 ## What is yet to be implemented
 If it's not listed, you are safe to assume it works.
 - Springtrap movement
