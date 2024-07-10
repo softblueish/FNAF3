@@ -1,0 +1,12 @@
+[Desktop Entry]
+Name=Five Nights at Freddy's 3
+GenericName=Horror Game
+Comment=It's all in your mind
+Keywords=FNAF;Horror;Game
+Version=1.0
+Icon=/opt/fnaf3/icon.png
+Exec=/opt/fnaf3/bin/fnaf3
+Type=Application
+Terminal=false
+MimeType=
+StartupNotify=true
