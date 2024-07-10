@@ -23,3 +23,13 @@ If it's not listed, you are safe to assume it works.
 - Phantom Puppet
 - Phantom Chica
 - Savefiles
+## Important note
+The game looks for the assets  folder in the parent directory where the game is being contained
+```
+├── bin
+│   └── fnaf3
+└── assets
+    └── 0.png
+    └── 1.png
+    └── ...
+```
