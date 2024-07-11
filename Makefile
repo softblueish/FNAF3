@@ -30,7 +30,7 @@ CXX = g++
 CXXFLAGS = -c
 LDFLAGS = $(SDL_FLAGS)
 
-all: compile link
+all: compile link copy_assets
 
 # Compile source files
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
@@ -42,13 +42,18 @@ link: $(OBJ_FILES)
 	@$(call MKDIR_P,$(BIN_DIR))
 	$(CXX) -o $(BIN_DIR)/$(APP_NAME)$(BIN_EXTENSION) $(OBJ_FILES) $(LDFLAGS)
 
+# Copy assets to bin directory
+copy_assets:
+	@$(call MKDIR_P,$(BIN_DIR)/assets)
+	$(CP) $(ASSETS_DIR)/* $(BIN_DIR)/assets/
+
 # Run the application
 run: all
 	$(BIN_DIR)/$(APP_NAME)$(BIN_EXTENSION)
 
 # Clean build and binary directories
 clean:
-	$(RM) $(BUILD_DIR)\* $(BIN_DIR)\*
+	$(RM) $(BUILD_DIR)/* $(BIN_DIR)/*
 
 # Install the application
 install:
@@ -66,4 +71,5 @@ uninstall:
 	$(RM) $(INSTALL_DIR)/icon.png
 	$(RM) /$(INSTALL_DIR)/assets/*
 
-.PHONY: all compile link run clean install uninstall
+.PHONY: all compile link run clean install uninstall copy_assets
+
