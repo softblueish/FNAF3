@@ -3,11 +3,13 @@
 // Object stack
 std::vector<Object*> animatedStack;
 
-// Debug
-const bool debug = false;
+// Cheats
+bool printMousePos = false;
 bool fastNights = false;
 bool handyMan = false;
 bool clearCameras = false;
+bool endlessNights = false;
+bool silent = false;
 
 // Engine variables
 float deltaTime = 0;
@@ -80,7 +82,7 @@ float freddyPosition = 0;
 bool freddyJumpscareInit = false;
 
 // Springtrap variables
-int springtrapOnCamera = 7;
+int springtrapOnCamera = -3;
 int springtrapOnVentCamera = 0;
 bool springtrapInVents = false;
 int springSkin = 0;
@@ -90,9 +92,10 @@ int springTotalTurns = 0;
 int movementCounter;
 int lastSpringMoveCounter = 0;
 bool hasSpringtrapSpawned = false;
-std::vector<int> cameraSpringMovementIndex[10][2] = {
-    {{-1}, {1}}, // Cam 1
-    {{0}, {2, 4}}, // Cam 2
+std::vector<int> cameraSpringMovementIndex[11][2] = {
+    {{0}, {1}}, // Window
+    {{-2}, {1, -1}}, // Cam 1
+    {{0, -1}, {2, 4}}, // Cam 2
     {{1}, {3}}, // Cam 3
     {{2}, {4}}, // Cam 4
     {{3, 1}, {5, 7}}, // Cam 5
@@ -103,6 +106,10 @@ std::vector<int> cameraSpringMovementIndex[10][2] = {
     {{8}, {9}} // Cam 10
 
 };
+/*
+Some locations are special such as window and office.
+-3 is disabled. -2 is in office. -1 is window.
+*/
 
 // Toolbox repairing and errors
 bool cameraError = false;
@@ -789,8 +796,16 @@ void initializeAssets(SDL_Window *window, SDL_Renderer *renderer, std::string pa
     springCameras[1][1].currentAnimation->addFrame(&assetList[146]);
     springCameras[1][1].currentAnimation->addFrame(&assetList[147]);
     animatedStack.push_back(&springCameras[1][1]);
-    springCameras[2][0] = Object(&assetList[111], 100, 1155, &global_x, &global_y, window, renderer);
-    springCameras[2][1] = Object(&assetList[133], 100, 1155, &global_x, &global_y, window, renderer);
+    springCameras[2][0] = Object(&assetList[147], 100, 1155, &global_x, &global_y, window, renderer);
+    springCameras[2][0].currentAnimation = new Animation();
+    springCameras[2][0].currentAnimation->addFrame(&assetList[146]);
+    springCameras[2][0].currentAnimation->addFrame(&assetList[147]);
+    animatedStack.push_back(&springCameras[2][0]);
+    springCameras[2][1] = Object(&assetList[132], 100, 1155, &global_x, &global_y, window, renderer);
+    springCameras[2][1].currentAnimation = new Animation();
+    springCameras[2][1].currentAnimation->addFrame(&assetList[132]);
+    springCameras[2][1].currentAnimation->addFrame(&assetList[133]);
+    animatedStack.push_back(&springCameras[2][1]);
     springCameras[3][0] = Object(&assetList[122], 100, 1155, &global_x, &global_y, window, renderer);
     springCameras[3][1] = Object(&assetList[122], 100, 1155, &global_x, &global_y, window, renderer);
     springCameras[4][0] = Object(&assetList[119], 100, 1155, &global_x, &global_y, window, renderer);
@@ -849,11 +864,15 @@ void initializeAssets(SDL_Window *window, SDL_Renderer *renderer, std::string pa
 Mix_Chunk* findSoundID(std::string soundNameInput){
     for(int i = 0; i < 70; i++){
         if(soundName[i] == soundNameInput){
+            if(silent) {
+                std::cout << "Sound not played: " << soundNameInput << " (silenced)" << std::endl;
+                return NULL;
+            }
             return soundList[i];
         }
     }
-    std::cout << "Sound not found: " << soundNameInput << " (using emergency sound)" << std::endl;
-    return soundList[0];
+    std::cout << "Sound not found: " << soundNameInput << std::endl;
+    return NULL;
 }
 
 void setObjectSettings(){
@@ -1037,7 +1056,7 @@ void setDefaultValues() {
     freddyJumpscareInit = false;
 
     // Springtrap variables
-    springtrapOnCamera = 7;
+    springtrapOnCamera = rand() % 5 + 5;
     springtrapOnVentCamera = 0;
     springtrapInVents = false;
     springSkin = 0;
@@ -1103,16 +1122,16 @@ void inGameTick(){
     // Hide springtrap if it's night 1
     if(night == 1) {
         springtrapInVents = false;
-        springtrapOnCamera = -2;
-        springtrapOnVentCamera = -2;
+        springtrapOnCamera = -3;
+        springtrapOnVentCamera = -3;
     }
 
     // Springtrap movement
     if(night != 1){
-        if(springtrapOnCamera == -1) {
+        if(springtrapOnCamera == -2) {
             // Springtrap is in office
         }
-        if(timePassedSinceNightStart - lastSpringMoveCounter > 1000 && springtrapOnCamera != -1){
+        if(timePassedSinceNightStart - lastSpringMoveCounter > 1000 && springtrapOnCamera != -2){
             movementCounter++;
             if(aggressive==1) movementCounter++;
             lastSpringMoveCounter = timePassedSinceNightStart;
@@ -1120,35 +1139,49 @@ void inGameTick(){
             if(night == 6) springAI = 7;
             if(movementCounter > 10 - springAI - aggressive + rand() % 16 - springTotalTurns) {
                 movementCounter = 0;
-                int springDecision = rand() % (3 + aggressive);
-                switch(springDecision){
-                    case 0:
-                        // Springtrap fails movement opportunity
-                        break;
-                    case 1:
-                        // Springtrap moves forward
-                        if(springtrapOnCamera==lookingAtRegularCamera) cameraBlindness = 1000;
-                        springtrapOnCamera = cameraSpringMovementIndex[springtrapOnCamera][0][rand() % cameraSpringMovementIndex[springtrapOnCamera][0].size()];
-                        if(springtrapOnCamera==lookingAtRegularCamera) cameraBlindness = 1000;
-                        springSkin = rand() % 2;
-                        cameraBlindness = 1000;
-                        springTotalTurns = 0;
-                        break;
-                    case 2:
-                        // Springtrap moves backwards
-                        if(springtrapOnCamera==lookingAtRegularCamera) cameraBlindness = 1000;
-                        springtrapOnCamera = cameraSpringMovementIndex[springtrapOnCamera][1][rand() % cameraSpringMovementIndex[springtrapOnCamera][1].size()];
-                        if(springtrapOnCamera==lookingAtRegularCamera) cameraBlindness = 1000;
-                        springSkin = rand() % 2;
-                        springTotalTurns = 0;
-                        break;
-                    case 3:
-                        // Springtrap moves into vents (yet to be implemented)                        
-                        break;
-                    default:
-                        std::cout << "Movement opportunity failed (Invalid Springtrap decision, " << springDecision << ")" << std::endl;
-                        break;
+                if(lureActive) {
+                    for(int i = 0; i < 2; i++){
+                        for(int j = 0; j < cameraSpringMovementIndex[springtrapOnCamera + 1][i].size(); j++){
+                            if(cameraSpringMovementIndex[springtrapOnCamera + 1][i][j] == cameraBeingLured) {
+                                springtrapOnCamera = lookingAtRegularCamera;
+                                cameraBlindness = 1000;
+                                springSkin = rand() % 2;
+                                springTotalTurns = 0;
+                            }
+                        }
+                    }
+                } else {
+                    int springDecision = rand() % (3 + aggressive); // 2 always forward
+                    switch(springDecision){
+                        case 0:
+                            // Springtrap fails movement opportunity
+                            break;
+                        case 1:
+                            // Springtrap moves forward
+                            if(springtrapOnCamera==lookingAtRegularCamera) cameraBlindness = 1000;
+                            springtrapOnCamera = cameraSpringMovementIndex[springtrapOnCamera + 1][0][rand() % cameraSpringMovementIndex[springtrapOnCamera + 1][0].size()];
+                            if(springtrapOnCamera==lookingAtRegularCamera) cameraBlindness = 1000;
+                            springSkin = rand() % 2;
+                            cameraBlindness = 1000;
+                            springTotalTurns = 0;
+                            break;
+                        case 2:
+                            // Springtrap moves backwards
+                            if(springtrapOnCamera==lookingAtRegularCamera) cameraBlindness = 1000;
+                            springtrapOnCamera = cameraSpringMovementIndex[springtrapOnCamera + 1][1][rand() % cameraSpringMovementIndex[springtrapOnCamera + 1][1].size()];
+                            if(springtrapOnCamera==lookingAtRegularCamera) cameraBlindness = 1000;
+                            springSkin = rand() % 2;
+                            springTotalTurns = 0;
+                            break;
+                        case 3:
+                            // Springtrap moves into vents (yet to be implemented)                        
+                            break;
+                        default:
+                            std::cout << "Movement opportunity failed (Invalid Springtrap decision, " << springDecision << ")" << std::endl;
+                            break;
+                    }
                 }
+                
             }
         }
     }
@@ -1196,13 +1229,13 @@ void inGameTick(){
     if(ventilationHealth <= -10) ventilationError = true;
 
     // Danger
-    if(!danger&&(foxyInOffice||springtrapInVents)&&hasPhoneDudeSpoken){
+    if(!danger&&(springtrapInVents)){
         danger = true;
-        Mix_PlayChannel(4, findSoundID("danger2b.wav"), -1);
+        Mix_PlayChannel(5, findSoundID("danger2b.wav"), -1);
     } else {
         if(danger&&!(foxyInOffice||springtrapInVents)) {
             danger = false;
-            Mix_HaltChannel(4);
+            Mix_HaltChannel(5);
         };
     }
 
@@ -1573,15 +1606,24 @@ void inGameTick(){
         }
 
         rebootAudioDeviceButton.setVisibility(true);
-        rebootAudioDeviceButton.clickable = true;
         rebootCameraSystemButton.setVisibility(true);
-        rebootCameraSystemButton.clickable = true;
         rebootVentilationButton.setVisibility(true);
-        rebootVentilationButton.clickable = true;
         rebootAllButton.setVisibility(true);
-        rebootAllButton.clickable = true;
         exitToolboxButton.setVisibility(true);
+
+        if(cameraRepairing || audioRepairing || ventilationRepairing || repairingAll){
+        rebootAudioDeviceButton.clickable = false;
+        rebootCameraSystemButton.clickable = false;
+        rebootVentilationButton.clickable = false;
+        rebootAllButton.clickable = false;
+        exitToolboxButton.clickable = false;
+        } else {
+        rebootAudioDeviceButton.clickable = true;
+        rebootCameraSystemButton.clickable = true;
+        rebootVentilationButton.clickable = true;
+        rebootAllButton.clickable = true;
         exitToolboxButton.clickable = true;
+        }
 
         toolBoxArrow.setVisibility(true);
     } else {
@@ -1624,19 +1666,7 @@ void inGameTick(){
         Mix_PlayChannel(4, findSoundID("select.wav"), 0);
     }
 
-    if(cameraRepairing || audioRepairing || ventilationRepairing || repairingAll){
-        rebootAudioDeviceButton.clickable = false;
-        rebootCameraSystemButton.clickable = false;
-        rebootVentilationButton.clickable = false;
-        rebootAllButton.clickable = false;
-        exitToolboxButton.clickable = false;
-    } else {
-        rebootAudioDeviceButton.clickable = true;
-        rebootCameraSystemButton.clickable = true;
-        rebootVentilationButton.clickable = true;
-        rebootAllButton.clickable = true;
-        exitToolboxButton.clickable = true;
-    }
+    
 
     switch(toolBoxHover){
         case 0:
@@ -1816,6 +1846,7 @@ void inGameTick(){
     // Audio lure
     if(cameraLargeButtonFrame[0].isMouseClicking() && !cameraPlayAudioButtonTimeout.currentAnimation->isPlaying){
         luresUsed++;
+        cameraBeingLured = lookingAtRegularCamera;
         lureActive = true;
         switch(rand()%3){
             case 0:
@@ -1946,7 +1977,7 @@ void inGameTick(){
         cameraStatic.opacity = 50 + 30 * sin(timePassedSinceNightStart) * sin(rand());
     } else if (night < 6){
         if(cameraUsetime < (60000 - (1200 * (night - 2))) && !cameraError){
-            cameraStatic.opacity = 30 + (15 * sin(timePassedSinceNightStart) * sin(rand()))*(1 - (cameraUsetime/(60000 - (1200 * (night - 2))))) + 50 * (cameraUsetime/(60000 - (1200 * (night - 2))));
+            cameraStatic.opacity = 30 + (15 * sin(timePassedSinceNightStart) * sin(rand()))*(1 - (cameraUsetime/(60000 - (1200 * (night - 2))))) + 30 * (cameraUsetime/(60000 - (1200 * (night - 2))));
             if((int)(timePassedSinceNightStart/20)%500 == 0) cameraStatic.opacity = 100;
         } else {
             cameraError = true;
@@ -1954,7 +1985,7 @@ void inGameTick(){
         }
     } else {
         if(cameraUsetime < 24000 && !cameraError){
-            cameraStatic.opacity = 30 + (15 * sin(timePassedSinceNightStart) * sin(rand()))*(1 - (cameraUsetime/24000)) + 50 * (cameraUsetime/24000);
+            cameraStatic.opacity = 30 + (15 * sin(timePassedSinceNightStart) * sin(rand()))*(1 - (cameraUsetime/24000)) + 30 * (cameraUsetime/24000);
             if((int)(timePassedSinceNightStart/10)%500 == 0) cameraStatic.opacity = 100;
         } else {
             cameraError = true;
@@ -2193,7 +2224,8 @@ void inGameTick(){
     global_y = (int)global_y_subpixel;
 
     if(hour == 6) {
-        winCondition = true;
+        if(endlessNights) hour = 0;
+        else winCondition = true;
     }
 
     if(winCondition == true) {
@@ -2393,7 +2425,7 @@ void nightStartTick(){
 }
 
 void tick(float delta, SDL_Window *window, SDL_Renderer *renderer, SDL_Event *event){
-    if(debug){
+    if(printMousePos){
         int mouseX, mouseY;
         SDL_GetMouseState(&mouseX, &mouseY);
         std::cout << mouseY - global_x << " " << mouseX - global_y << std::endl;

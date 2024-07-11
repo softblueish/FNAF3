@@ -16,7 +16,7 @@ make clean
 You can uninstall with ``make uninstall``. If you only want to run it ``make all`` works too.
 ## What is yet to be implemented
 If it's not listed, you are safe to assume it works.
-- Springtrap movement
+- Springtrap movement (70% done)
 - Main menu, and any submenus
 - Happiest day minigames (Unlikely to be implemented, unless I get the motivation to do so)
 - Phantom Mangle
