@@ -5,6 +5,6 @@
     Channel 1: Phone dude
     Channel 2: Fan
     Channel 3: Ambience
-    Channel 4: Button sounds / Jumpscare / Danger
+    Channel 4: Button sounds / Jumpscare / Danger 
     Channel 5: Alarm
 */
