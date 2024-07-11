@@ -29,7 +29,7 @@ class Animation {
         std::vector<Asset*> frames;
         int currentFrame;
         float currentSubFrame;
-        bool isPlaying;
+        bool isPlaying = false;
         Animation();
         void addFrame(Asset *frame);
 };

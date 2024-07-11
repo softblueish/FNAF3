@@ -1,28 +1,67 @@
-all: compile run
+# Variables for directories and files
+SRC_DIR = src
+BUILD_DIR = build
+BIN_DIR = bin
+ASSETS_DIR = assets
+INSTALL_DIR = /opt/fnaf3
+APP_NAME = fnaf3
 
-compile:
-	g++ -c -o build/main.o src/main.cpp
-	g++ -c -o build/graphics.o src/graphics.cpp
-	g++ -c -o build/game.o src/game.cpp
-	g++ -c -o build/objects.o src/objects.cpp
-	g++ -c -o build/audio.o src/audio.cpp
-	g++ -o bin/fnaf3 build/main.o build/graphics.o build/game.o build/objects.o build/audio.o -lSDL2_mixer -lSDL2_image -lSDL2
+# Source files
+SRC_FILES = main.cpp graphics.cpp game.cpp objects.cpp audio.cpp
+OBJ_FILES = $(SRC_FILES:%.cpp=$(BUILD_DIR)/%.o)
 
-run:
-	bin/fnaf3
+# Platform-specific commands and settings
+ifeq ($(OS),Windows_NT)
+    MKDIR_P = mkdir $(subst /,\,$(1))
+    RM = del /Q
+    CP = xcopy /s /i
+    BIN_EXTENSION = .exe
+else
+    MKDIR_P = mkdir -p $(1)
+    RM = rm -f
+    CP = cp -r
+    BIN_EXTENSION =
+endif
 
+# Compiler and linker
+CXX = g++
+CXXFLAGS = -c
+LDFLAGS = -lSDL2_mixer -lSDL2_image -lSDL2
+
+all: compile link
+
+# Compile source files
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
+	@$(call MKDIR_P,$(BUILD_DIR))
+	$(CXX) $(CXXFLAGS) -o $@ $<
+
+# Link object files
+link: $(OBJ_FILES)
+	@$(call MKDIR_P,$(BIN_DIR))
+	$(CXX) -o $(BIN_DIR)/$(APP_NAME)$(BIN_EXTENSION) $(OBJ_FILES) $(LDFLAGS)
+
+# Run the application
+run: all
+	$(BIN_DIR)/$(APP_NAME)$(BIN_EXTENSION)
+
+# Clean build and binary directories
 clean:
-	rm -f build/* bin/*
+	$(RM) $(BUILD_DIR)/* $(BIN_DIR)/*
 
+# Install the application
 install:
-	sudo mkdir -p /opt/fnaf3/
-	sudo mkdir -p /opt/fnaf3/assets/
-	sudo mkdir -p /opt/fnaf3/bin/
-	sudo cp bin/fnaf3 /opt/fnaf3/bin/
-	sudo cp -r assets/* /opt/fnaf3/assets/
-	sudo cp icon.png /opt/fnaf3/
-	sudo cp fnaf3.desktop /usr/share/applications/
+	$(call MKDIR_P,$(INSTALL_DIR)/bin)
+	$(call MKDIR_P,$(INSTALL_DIR)/assets)
+	$(CP) $(BIN_DIR)/$(APP_NAME)$(BIN_EXTENSION) $(INSTALL_DIR)/bin/
+	$(CP) $(ASSETS_DIR)/* $(INSTALL_DIR)/assets/
+	$(CP) icon.png $(INSTALL_DIR)/
+	$(CP) fnaf3.desktop /usr/share/applications/
 
+# Uninstall the application
 uninstall:
-	sudo rm -rf /opt/fnaf3/
-	sudo rm /usr/share/applications/fnaf3.desktop
+	$(RM) /usr/share/applications/fnaf3.desktop
+	$(RM) $(INSTALL_DIR)/bin/$(APP_NAME)$(BIN_EXTENSION)
+	$(RM) $(INSTALL_DIR)/icon.png
+	$(RM) /$(INSTALL_DIR)/assets/*
+
+.PHONY: all compile link run clean install uninstall

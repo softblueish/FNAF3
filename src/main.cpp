@@ -25,25 +25,37 @@ void initialize(){
 
 std::string GetExecutableDirectory() {
     char buffer[PATH_MAX];
+
+    #ifdef _WIN32
+    GetModuleFileName(NULL, buffer, sizeof(buffer));
+    #else
     ssize_t len = readlink("/proc/self/exe", buffer, sizeof(buffer) - 1);
-    if (len != -1) {
-        buffer[len] = '\0';
-        std::string path(buffer);
-        return path.substr(0, path.find_last_of("/"));
+    if (len == -1) {
+        throw std::runtime_error("readlink failed");
     }
-    return "";
+    buffer[len] = '\0';
+    #endif
+    std::string path(buffer);
+    return path.substr(0, path.find_last_of("/\\"));
 }
 
 std::string GetParentDirectory(const std::string& directory) {
+    #ifdef _WIN32
+    size_t last_slash_pos = directory.find_last_of("\\");
+    #else
     size_t last_slash_pos = directory.find_last_of("/");
+    #endif
     if (last_slash_pos != std::string::npos) {
         return directory.substr(0, last_slash_pos);
     }
     return "";
 }
 
-
+#ifdef _WIN32
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd);
+#else
 int main(){
+#endif
     GAME_PATH = GetParentDirectory(GetExecutableDirectory());
     initialize();
     std::cout << "1/4: Window and renderer initialized\n";
@@ -56,7 +68,11 @@ int main(){
     SDL_RenderClear(renderer);
 
     // Render bottom right loading symbol on the bottom right, with a texture
+    #ifdef _WIN32
+    Asset loading = Asset(GAME_PATH + "\\assets\\80.png", renderer);
+    #else
     Asset loading = Asset(GAME_PATH + "/assets/80.png", renderer);
+    #endif
     SDL_Rect loadingRect = {(1024-64) * SCREEN_WIDTH/1024, (768-64) * SCREEN_HEIGHT/768, loading.width * SCREEN_WIDTH/1024, loading.height * SCREEN_HEIGHT/768};
     SDL_RenderCopy(renderer, loading.texture, NULL, &loadingRect);
     SDL_RenderPresent(renderer);

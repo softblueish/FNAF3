@@ -7,6 +7,7 @@ std::vector<Object*> animatedStack;
 const bool debug = false;
 bool fastNights = false;
 bool handyMan = false;
+bool clearCameras = false;
 
 // Engine variables
 float deltaTime = 0;
@@ -39,6 +40,7 @@ float jumpscareLinger = 0;
 float jumpscarePassiveness = 0;
 unsigned int timeSinceLastPressedVentButton;
 bool totalBlackout = false;
+bool danger = false;
 
 bool cameraOpen = false;
 bool forceCameraOpen = false;
@@ -82,6 +84,25 @@ int springtrapOnCamera = 7;
 int springtrapOnVentCamera = 0;
 bool springtrapInVents = true;
 int springSkin = 0;
+int aggressive = 0;
+int springAI = 0;
+int springTotalTurns = 0;
+int movementCounter;
+int lastSpringMoveCounter = 0;
+bool hasSpringtrapSpawned = false;
+std::vector<int> cameraSpringMovementIndex[10][2] = {
+    {{-1}, {1}}, // Cam 1
+    {{0}, {2, 4}}, // Cam 2
+    {{1}, {3}}, // Cam 3
+    {{2}, {4}}, // Cam 4
+    {{3, 1}, {5, 7}}, // Cam 5
+    {{4}, {6}}, // Cam 6
+    {{5}, {7}}, // Cam 7
+    {{6, 4}, {8}}, // Cam 8
+    {{7}, {9}}, // Cam 9
+    {{8}, {9}} // Cam 10
+
+};
 
 // Toolbox repairing and errors
 bool cameraError = false;
@@ -119,9 +140,10 @@ int cameraButtonFramePositions[10][2] = {
     {903, 455}
 };
 
-// Load all assets to memory
+// Load all asets to memory
 Asset assetList[1150];
-Mix_Chunk *soundList[70];
+Mix_Chunk* soundList[70];
+std::string soundName[70];
 
 // Objects
 Object officeBackground; // Office object
@@ -218,26 +240,54 @@ void setObjectSettings(); // Ignore this function, the real one is further down
 void setDefaultValues(); // Ignore this function, the real one is further down
 void gameplayRender(); // Ignore this function, the real one is further down
 
+std::string getLastElement(const std::string& str, char delimiter) {
+    std::stringstream ss(str);
+    std::string token;
+    std::string lastToken;
+
+    while (std::getline(ss, token, delimiter)) {
+        if (!token.empty()) {
+            lastToken = token; // Update lastToken whenever a non-empty token is found
+        }
+    }
+
+    return lastToken;
+}
+
 void initializeAssets(SDL_Window *window, SDL_Renderer *renderer, std::string path){
     // Load all assets to memory
     for(int i = 0; i < 1151; i++){
+        #ifdef _WIN32
+        std::string pathIterated = path + "\\assets\\" + std::to_string(i+1) + ".png";
+        #else
         std::string pathIterated = path + "/assets/" + std::to_string(i+1) + ".png";
+        #endif
         assetList[i] = Asset(pathIterated, renderer);
     }
 
-    int soundCount = 0;
+    int soundCouter = 0;
+    #ifdef _WIN32
+    for(const auto& entry : std::filesystem::directory_iterator(path + "\\assets\\audio\\")){
+    #else
     for(const auto& entry : std::filesystem::directory_iterator(path + "/assets/audio/")){
+    #endif
         if(entry.is_regular_file() && entry.path().extension() == ".wav") {
             Mix_Chunk* sound = Mix_LoadWAV(entry.path().string().c_str());
             if(sound != nullptr) {
-                soundList[soundCount] = sound;
-                std::cout << "Loaded sound " << entry.path().string() << " (" << soundCount << ") \n";
+                soundList[soundCouter] = Mix_LoadWAV(entry.path().string().c_str());
+                #ifdef _WIN32
+                std::string filename = getLastElement(entry.path().string(), '\\');
+                #else
+                std::string filename = getLastElement(entry.path().string(), '/');
+                #endif
+                soundName[soundCouter] = filename;
+                std::cout << "Loaded sound " << entry.path().string() << " (" << soundCouter << ") \n";
             } else {
                 std::cerr << "Failed to load sound " << entry.path().string() << ": " << Mix_GetError() << "\n";
             
             }
-            soundCount++;
         }
+        soundCouter++;
     }
 
     std::cout << "3/4: Assets initialized\n";
@@ -796,6 +846,16 @@ void initializeAssets(SDL_Window *window, SDL_Renderer *renderer, std::string pa
     setDefaultValues();
 }
 
+Mix_Chunk* findSoundID(std::string soundNameInput){
+    for(int i = 0; i < 70; i++){
+        if(soundName[i] == soundNameInput){
+            return soundList[i];
+        }
+    }
+    std::cout << "Sound not found: " << soundNameInput << " (using emergency sound)" << std::endl;
+    return soundList[0];
+}
+
 void setObjectSettings(){
     // Object settings
     officeBackground.setVisibility(true);
@@ -892,6 +952,7 @@ void setObjectSettings(){
     cameraGlitch.currentAnimation->isPlaying = true;
     cameraGlitch.currentSecondaryAnimation->isPlaying = true; 
     cameraMonitor.currentAnimation->isPlaying = false;
+    ventSealingAnimation.currentAnimation->isPlaying = false;
 }
 
 void setDefaultValues() {
@@ -937,6 +998,7 @@ void setDefaultValues() {
     jumpscarePassiveness = 0;
     timeSinceLastPressedVentButton;
     totalBlackout = false;
+    danger = false;
 
     cameraOpen = false;
     forceCameraOpen = false;
@@ -977,8 +1039,10 @@ void setDefaultValues() {
     // Springtrap variables
     springtrapOnCamera = 7;
     springtrapOnVentCamera = 0;
-    springtrapInVents = true;
+    springtrapInVents = false;
     springSkin = 0;
+    int aggressive = 0;
+    hasSpringtrapSpawned = false;
 
     // Toolbox repairing and errors
     cameraError = false;
@@ -1015,7 +1079,7 @@ void setDefaultValues() {
 }
 
 void menuTick(){
-
+    // Menu
 }
 
 void inGameTick(){
@@ -1034,6 +1098,61 @@ void inGameTick(){
     if(toolboxOpen||cameraOpen) {
         apathy = 0;
         lastVentilationPenaltyHit = 0;
+    }
+
+    // Hide springtrap if it's night 1
+    if(night == 1) {
+        springtrapInVents = false;
+        springtrapOnCamera = -1;
+        springtrapOnVentCamera = -1;
+    }
+
+    // Springtrap movement
+    if(night != 1){
+        if(springtrapOnCamera = -1) {
+            // Springtrap is in office
+        }
+        if(timePassedSinceNightStart - lastSpringMoveCounter > 1000 && springtrapOnCamera != -1){
+            movementCounter++;
+            if(aggressive==1) movementCounter++;
+            lastSpringMoveCounter = timePassedSinceNightStart;
+            springAI = night;
+            if(night == 6) springAI = 7;
+            std::cout << "Movement counter: " << movementCounter << "\n";
+            if(movementCounter > 10 - springAI - aggressive + rand() % 16 - springTotalTurns) {
+                cameraGlitch.currentAnimation->isPlaying = true;
+                movementCounter = 0;
+                std::cout << "Movement check passed\n";
+                int springDecision = rand() % (4 + aggressive);
+                switch(springDecision){
+                    case 0:
+                        // Springtrap fails movement opportunity
+                        std::cout << "Movement opportunity failed" << std::endl;
+                        break;
+                    case 1:
+                        // Springtrap moves forward
+                        springtrapOnCamera = cameraSpringMovementIndex[springtrapOnCamera][0][rand() % cameraSpringMovementIndex[springtrapOnCamera][0].size()];
+                        springSkin = rand() % 2;
+                        springTotalTurns = 0;
+                        std::cout << "Springtrap moved forward to CAM " << springtrapOnCamera + 1 << " with springskin value " << springSkin << std::endl;
+                        break;
+                    case 2:
+                        // Springtrap moves backwards
+                        springtrapOnCamera = cameraSpringMovementIndex[springtrapOnCamera][1][rand() % cameraSpringMovementIndex[springtrapOnCamera][1].size()];
+                        springSkin = rand() % 2;
+                        springTotalTurns = 0;
+                        std::cout << "Springtrap moved backwards to CAM" << springtrapOnCamera + 1 << " with springskin value " << springSkin << std::endl;
+                        break;
+                    case 4:
+                        // Springtrap moves into vents (yet to be implemented)
+                        std::cout << "Springtrap moved into vents" << std::endl;
+                        break;
+                    default:
+                        std::cout << "Movement opportunity failed (Invalid Springtrap decision, " << springDecision << ")" << std::endl;
+                        break;
+                }
+            }
+        }
     }
 
     // Ventilation degradation
@@ -1078,6 +1197,17 @@ void inGameTick(){
 
     if(ventilationHealth <= -10) ventilationError = true;
 
+    // Danger
+    if(!danger&&(foxyInOffice||springtrapInVents)&&hasPhoneDudeSpoken){
+        danger = true;
+        Mix_PlayChannel(4, findSoundID("danger2b.wav"), -1);
+    } else {
+        if(danger&&!(foxyInOffice||springtrapInVents)) {
+            danger = false;
+            Mix_HaltChannel(4);
+        };
+    }
+
     // Foxy chance
     switch(night){
         case 2:
@@ -1116,7 +1246,7 @@ void inGameTick(){
             foxyJumpscare = true;
             foxyInOffice = false;
             foxyAsset.currentAnimation->isPlaying = true;
-            Mix_PlayChannel(4, soundList[59], 0);
+            Mix_PlayChannel(4, findSoundID("scream3.wav"), 0);
         }
     } else if(!foxyJumpscare && !FoxyFlashbang){
         foxyAsset.setVisibility(false);
@@ -1264,7 +1394,26 @@ void inGameTick(){
     // Phone dude
     if(!hasPhoneDudeSpoken){
         int nightList[6] = {1, 69, 6, 3, 51, 13};
-        Mix_PlayChannel(1, soundList[nightList[night-1]], 0);
+        switch(night){
+            case 1:
+                Mix_PlayChannel(1, findSoundID("night1final.wav"), 0);
+                break;
+            case 2:
+                Mix_PlayChannel(1, findSoundID("night2final2.wav"), 0);
+                break;
+            case 3:
+                Mix_PlayChannel(1, findSoundID("night3final.wav"), 0);
+                break;
+            case 4:
+                Mix_PlayChannel(1, findSoundID("night4final.wav"), 0);
+                break;
+            case 5:
+                Mix_PlayChannel(1, findSoundID("night5final.wav"), 0);
+                break;
+            case 6:
+                Mix_PlayChannel(1, findSoundID("night6final.wav"), 0);
+                break;
+        }
         hasPhoneDudeSpoken = true;
         muteButton.setVisibility(true);
         muteButton.clickable = true;
@@ -1282,9 +1431,9 @@ void inGameTick(){
     }
 
     if(!hasAmbienceStarted){
-        Mix_PlayChannel(2, soundList[44], -1);
+        Mix_PlayChannel(2, findSoundID("tablefan.wav"), -1);
         SDL_Delay(5);
-        Mix_PlayChannel(3, soundList[38], -1);
+        Mix_PlayChannel(3, findSoundID("Desolate_Underworld2.wav"), -1);
         hasAmbienceStarted = true;
     }
 
@@ -1316,14 +1465,14 @@ void inGameTick(){
 
     // Freddy nose boop
     if(freddysNose.isMouseClicking()){
-        Mix_PlayChannel(4, soundList[65], 0);
+        Mix_PlayChannel(4, findSoundID("PartyFavorraspyPart_AC01__3.wav"), 0);
     }
 
     // Toolbox monitor manager
     if(toolboxOpenButton.isMouseClicking()){
         if(!toolboxOpen){
             toolBoxHover = 0;
-            Mix_PlayChannel(4, soundList[7], 0);
+            Mix_PlayChannel(4, findSoundID("lever1.wav"), 0);
             toolboxOpen = true;
             toolboxOpenButton.setVisibility(false);
             toolboxMonitor.currentAnimation->isPlaying = true;
@@ -1331,7 +1480,7 @@ void inGameTick(){
     }
 
     if(exitToolboxButton.isMouseClicking()){
-        Mix_PlayChannel(4, soundList[25], 0);
+        Mix_PlayChannel(4, findSoundID("lever2.wav"), 0);
         toolboxOpen = false;
         toolboxMonitor.currentSecondaryAnimation->isPlaying = true;
     }
@@ -1344,7 +1493,7 @@ void inGameTick(){
 
     // Toggle map
     if(cameraLargeButtonFrame[1].isMouseClicking()){
-        Mix_PlayChannel(4, soundList[30], 0);
+        Mix_PlayChannel(4, findSoundID("select.wav"), 0);
         ventCameraOn = !ventCameraOn;
         cameraGlitch.setVisibility(true);
         if(rand()%2 == 0){
@@ -1462,19 +1611,19 @@ void inGameTick(){
 
     if(toolboxOpen==true && rebootAudioDeviceButton.isMouseHovering() && toolBoxHover != 0 && !(cameraRepairing || audioRepairing || ventilationRepairing || repairingAll)){
         toolBoxHover = 0;
-        Mix_PlayChannel(4, soundList[30], 0);
+        Mix_PlayChannel(4, findSoundID("select.wav"), 0);
     } else if(toolboxOpen==true && rebootCameraSystemButton.isMouseHovering() && toolBoxHover != 1 && !(cameraRepairing || audioRepairing || ventilationRepairing || repairingAll)){
         toolBoxHover = 1;
-        Mix_PlayChannel(4, soundList[30], 0);
+        Mix_PlayChannel(4, findSoundID("select.wav"), 0);
     } else if(toolboxOpen==true && rebootVentilationButton.isMouseHovering() && toolBoxHover != 2 && !(cameraRepairing || audioRepairing || ventilationRepairing || repairingAll)){
         toolBoxHover = 2;
-        Mix_PlayChannel(4, soundList[30], 0);
+        Mix_PlayChannel(4, findSoundID("select.wav"), 0);
     } else if(toolboxOpen==true && rebootAllButton.isMouseHovering() && toolBoxHover != 3 && !(cameraRepairing || audioRepairing || ventilationRepairing || repairingAll)){
         toolBoxHover = 3;
-        Mix_PlayChannel(4, soundList[30], 0);
+        Mix_PlayChannel(4, findSoundID("select.wav"), 0);
     } else if(toolboxOpen==true && exitToolboxButton.isMouseHovering() && toolBoxHover != 4 && !(cameraRepairing || audioRepairing || ventilationRepairing || repairingAll)){
         toolBoxHover = 4;
-        Mix_PlayChannel(4, soundList[30], 0);
+        Mix_PlayChannel(4, findSoundID("select.wav"), 0);
     }
 
     if(cameraRepairing || audioRepairing || ventilationRepairing || repairingAll){
@@ -1529,8 +1678,8 @@ void inGameTick(){
     if(cameraOpenButton.isMouseClicking() || (forceCameraOpen&&cameraOpen)){
         if(!cameraOpen){
             if(balloonBoyOnCamera) balloonBoyOnCamera = false;
-            Mix_PlayChannel(0, soundList[37], -1);
-            Mix_PlayChannel(4, soundList[28], 0);
+            Mix_PlayChannel(0, findSoundID("static_sound.wav"), -1);
+            Mix_PlayChannel(4, findSoundID("crank1.wav"), 0);
             cameraOpen = true;
             cameraOpenButton.opacity = 30;
             cameraMonitor.currentAnimation->isPlaying = true;
@@ -1542,7 +1691,7 @@ void inGameTick(){
                 foxyInOffice = false;
             }
             Mix_HaltChannel(0);
-            Mix_PlayChannel(4, soundList[61], 0);
+            Mix_PlayChannel(4, findSoundID("crank2.wav"), 0);
             cameraOpen = false;
             cameraOpenButton.opacity = 80;
             cameraMonitor.currentSecondaryAnimation->isPlaying = true;
@@ -1558,7 +1707,7 @@ void inGameTick(){
     if(cameraOpen == true && cameraMonitor.currentAnimation->isPlaying == false){ // Post animation manager when camera is open
         cameraUsetime += deltaTime;
         Mix_Volume(0, (int)(128 * (((float)cameraStatic.opacity/100))));
-        cameraStatic.setVisibility(true);
+        cameraStatic.setVisibility(!clearCameras);
         cameraLargeButtonFrame[1].clickable = !ventBeingSealed;
         if(audioDeviceError) cameraAudioDeviceErrorText.setVisibility(true);
         if(cameraError) cameraVideoErrorText.setVisibility(true);
@@ -1672,13 +1821,13 @@ void inGameTick(){
         lureActive = true;
         switch(rand()%3){
             case 0:
-                Mix_PlayChannel(4, soundList[26], 0);
+                Mix_PlayChannel(4, findSoundID("echo1.wav"), 0);
                 break;
             case 1:
-                Mix_PlayChannel(4, soundList[57], 0);
+                Mix_PlayChannel(4, findSoundID("echo4b.wav"), 0);
                 break;
             case 2:
-                Mix_PlayChannel(4, soundList[67], 0);
+                Mix_PlayChannel(4, findSoundID("echo3b.wav"), 0);
                 break;
         }
         cameraPlayAudioButtonTimeout.currentAnimation->isPlaying = true;
@@ -1851,7 +2000,7 @@ void inGameTick(){
     if(jumpscarePassiveness > 0) jumpscarePassiveness -= deltaTime;
 
     if(balloonBoyJumpscare && cameraMonitor.currentSecondaryAnimation->isPlaying == false && jumpscarePassiveness <= 0 && jumpscareLinger <= 0){
-        Mix_PlayChannel(4, soundList[59], 0);
+        Mix_PlayChannel(4, findSoundID("scream3.wav"), 0);
         ventilationError = true;
         balloonBoyJumpscareAsset.currentAnimation->isPlaying = true;
         balloonBoyFlashbang = true;
@@ -1865,7 +2014,7 @@ void inGameTick(){
         balloonBoyJumpscareAsset.opacity = jumpscareLinger / 2500 * 100;
         if(balloonBoyFlashbang) balloonBoyJumpscare = false;
         foxyAsset.opacity = jumpscareLinger / 3000 * 100;
-        Mix_PlayChannel(-1, soundList[66], 0);
+        Mix_PlayChannel(-1, findSoundID("breathing.wav"), 0);
         jumpscareLinger -= deltaTime;
     }
 
@@ -1884,27 +2033,27 @@ void inGameTick(){
     if(cameraSystemRepairingToolBox.currentAnimation->isPlaying != true && cameraRepairing){
         cameraSystemRepairingToolBox.currentAnimation->isPlaying = true;
         repairProgress++;
-        if(repairProgress != requiredNormalRepair) Mix_PlayChannel(4, soundList[27], 0);
+        if(repairProgress != requiredNormalRepair) Mix_PlayChannel(4, findSoundID("wait.wav"), 0);
     }
 
     // Repair animations
     if(audioDeviceRepairingToolBox.currentAnimation->isPlaying != true && audioRepairing){
         audioDeviceRepairingToolBox.currentAnimation->isPlaying = true;
         repairProgress++;
-        if(repairProgress != requiredNormalRepair) Mix_PlayChannel(4, soundList[27], 0);
+        if(repairProgress != requiredNormalRepair) Mix_PlayChannel(4, findSoundID("wait.wav"), 0);
     }
 
 
     if(ventilationRepairingToolBox.currentAnimation->isPlaying != true && ventilationRepairing){
         ventilationRepairingToolBox.currentAnimation->isPlaying = true;
         repairProgress++;
-        if(repairProgress != requiredNormalRepair) Mix_PlayChannel(4, soundList[27], 0);
+        if(repairProgress != requiredNormalRepair) Mix_PlayChannel(4, findSoundID("wait.wav"), 0);
     }
 
     if(allRepairingToolBox.currentAnimation->isPlaying != true && repairingAll){
         allRepairingToolBox.currentAnimation->isPlaying = true;
         repairProgress++;
-        if(repairProgress != requiredAllRepair) Mix_PlayChannel(4, soundList[27], 0);
+        if(repairProgress != requiredAllRepair) Mix_PlayChannel(4, findSoundID("wait.wav"), 0);
     }
 
     if(handyMan){
@@ -1989,7 +2138,7 @@ void inGameTick(){
     if((ventilationError)){
         if(!officeBackground.currentAnimation->isPlaying){
             officeBackground.currentAnimation->isPlaying = true;
-            Mix_PlayChannel(5, soundList[2], 0);
+            Mix_PlayChannel(5, findSoundID("alarm.wav"), 0);
         }
     } else {
         Mix_HaltChannel(5);
@@ -2012,7 +2161,7 @@ void inGameTick(){
             ventSealed = true;
             ventBeingSealed = false;
             cameraOpenButton.clickable = true;
-            Mix_PlayChannel(4, soundList[31], 0);
+            Mix_PlayChannel(4, findSoundID("glitch2.wav"), 0);
             sealCamTextInfo.currentAsset = &assetList[1139];
             sealCamTextInfo.currentTexture = sealCamTextInfo.currentAsset->texture;
             sealCamTextInfo.width = sealCamTextInfo.currentAsset->width;
@@ -2034,7 +2183,7 @@ void inGameTick(){
         if(ventSealingAnimation.currentAnimation->isPlaying == false){
             ventSealingAnimation.currentAnimation->isPlaying = true;
             ventSealingProgress++;
-            Mix_PlayChannel(4, soundList[27], 0);
+            Mix_PlayChannel(4, findSoundID("wait.wav"), 0);
         }
     } else {
         ventSealingAnimation.setVisibility(false);
@@ -2054,7 +2203,7 @@ void inGameTick(){
         for(int i = 0; i < 6; i++){
             Mix_HaltChannel(i);
         }
-        Mix_PlayChannel(4, soundList[62], 0);
+        Mix_PlayChannel(4, findSoundID("done.wav"), 0);
     }
 
     gameplayRender();
@@ -2161,7 +2310,7 @@ void gameplayRender(){
 
 void winScreenTick(){
     if(timeSinceWon == 0) {
-        Mix_PlayChannel(4, soundList[5], 0);
+        Mix_PlayChannel(4, findSoundID("Clocks_Chimes_Cl_02480702.wav"), 0);
         cheersPlayed = false;
         winScanLinesIndex = 0;  
     }
@@ -2199,7 +2348,7 @@ void winScreenTick(){
 
     if(timeSinceWon > 4000){
         if(cheersPlayed == false){
-            Mix_PlayChannel(5, soundList[14], 0);
+            Mix_PlayChannel(5, findSoundID("CROWD_SMALL_CHIL_EC049202.wav"), 0);
             cheersPlayed = true;
         }
         fiveAMText.setVisibility(false);
@@ -2226,7 +2375,7 @@ void winScreenTick(){
 
 void nightStartTick(){
     if(timeSinceNightStartScreenStart == 0) {
-        Mix_PlayChannel(4, soundList[39], 0);
+        Mix_PlayChannel(4, findSoundID("startday.wav"), 0);
         nightStartScanLines.setVisibility(true);
         nightStartScanLines.animationSpeed = 0.80;
         nightStartScanLines.opacity = 80;
