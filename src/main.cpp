@@ -10,6 +10,8 @@ SDL_Event event;
 const int SCREEN_WIDTH = 1024; // 1024
 const int SCREEN_HEIGHT = 768; // 768
 const bool START_AS_FULLSCREEN = false;
+bool MEASURE_FPS = false;
+bool VSYNC = false;
 std::string GAME_PATH;
 
 int getScreenSize(int pos) {
@@ -22,7 +24,8 @@ int getScreenSize(int pos) {
 void initialize() {
     window = SDL_CreateWindow("Five Nights at Freddy's 3", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
     if (START_AS_FULLSCREEN) SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
-    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    if(VSYNC) renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    else renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 8, 1024);
 }
 
@@ -85,11 +88,26 @@ int main() {
     Uint64 timeLast = 0;
     double deltaTime = 0;
 
+    std::vector<double> avgFPS;
+    double avgFPSMax;
+
     while (true) {
+        if(MEASURE_FPS){
+            avgFPS.push_back(1000/deltaTime);
+            if(SDL_PollEvent(&event) && event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_u){
+                avgFPSMax = 0;
+                for(int i = 0; i < avgFPS.size(); i++){
+                    avgFPSMax += avgFPS[i];
+                }
+                avgFPSMax /= avgFPS.size();
+                std::cout << "Average FPS: " << avgFPSMax << std::endl;
+                avgFPS.clear();
+            }
+        }
         timeLast = timeNow;
         timeNow = SDL_GetPerformanceCounter();
         deltaTime = (double)((timeNow - timeLast) * 1000 / (double)SDL_GetPerformanceFrequency());
-        if (SDL_PollEvent(&event) && event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_RETURN) {
+        if (SDL_PollEvent(&event) && event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_RETURN && event.key.keysym.mod & KMOD_ALT) {
             if (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN) SDL_SetWindowFullscreen(window, 0);
             else SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
         }
