@@ -12,23 +12,25 @@ OBJ_FILES = $(SRC_FILES:%.cpp=$(BUILD_DIR)/%.o)
 
 # Platform-specific commands and settings
 ifeq ($(OS),Windows_NT)
-    MKDIR_P = mkdir $(subst /,\,$(1))
+    MKDIR_P = if not exist $(subst /,\,$(1)) mkdir $(subst /,\,$(1))
     RM = del /Q
     CP = xcopy /s /i
     BIN_EXTENSION = .exe
+    SDL_FLAGS = -static-libgcc -static-libstdc++ -lSDL2main -lSDL2 -lSDL2_image -lSDL2_mixer
 else
     MKDIR_P = mkdir -p $(1)
     RM = rm -f
     CP = cp -r
     BIN_EXTENSION =
+    SDL_FLAGS = -lSDL2_mixer -lSDL2_image -lSDL2
 endif
 
 # Compiler and linker
 CXX = g++
 CXXFLAGS = -c
-LDFLAGS = -lSDL2_mixer -lSDL2_image -lSDL2
+LDFLAGS = $(SDL_FLAGS)
 
-all: compile link
+all: compile link copy_assets
 
 # Compile source files
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
@@ -39,6 +41,11 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
 link: $(OBJ_FILES)
 	@$(call MKDIR_P,$(BIN_DIR))
 	$(CXX) -o $(BIN_DIR)/$(APP_NAME)$(BIN_EXTENSION) $(OBJ_FILES) $(LDFLAGS)
+
+# Copy assets to bin directory
+copy_assets:
+	@$(call MKDIR_P,$(BIN_DIR)/assets)
+	$(CP) $(ASSETS_DIR)/* $(BIN_DIR)/assets/
 
 # Run the application
 run: all
@@ -64,4 +71,5 @@ uninstall:
 	$(RM) $(INSTALL_DIR)/icon.png
 	$(RM) /$(INSTALL_DIR)/assets/*
 
-.PHONY: all compile link run clean install uninstall
+.PHONY: all compile link run clean install uninstall copy_assets
+

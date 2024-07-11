@@ -82,7 +82,7 @@ bool freddyJumpscareInit = false;
 // Springtrap variables
 int springtrapOnCamera = 7;
 int springtrapOnVentCamera = 0;
-bool springtrapInVents = true;
+bool springtrapInVents = false;
 int springSkin = 0;
 int aggressive = 0;
 int springAI = 0;
@@ -1041,7 +1041,7 @@ void setDefaultValues() {
     springtrapOnVentCamera = 0;
     springtrapInVents = false;
     springSkin = 0;
-    int aggressive = 0;
+    aggressive = 0;
     hasSpringtrapSpawned = false;
 
     // Toolbox repairing and errors
@@ -1103,13 +1103,13 @@ void inGameTick(){
     // Hide springtrap if it's night 1
     if(night == 1) {
         springtrapInVents = false;
-        springtrapOnCamera = -1;
-        springtrapOnVentCamera = -1;
+        springtrapOnCamera = -2;
+        springtrapOnVentCamera = -2;
     }
 
     // Springtrap movement
     if(night != 1){
-        if(springtrapOnCamera = -1) {
+        if(springtrapOnCamera == -1) {
             // Springtrap is in office
         }
         if(timePassedSinceNightStart - lastSpringMoveCounter > 1000 && springtrapOnCamera != -1){
@@ -1118,34 +1118,32 @@ void inGameTick(){
             lastSpringMoveCounter = timePassedSinceNightStart;
             springAI = night;
             if(night == 6) springAI = 7;
-            std::cout << "Movement counter: " << movementCounter << "\n";
             if(movementCounter > 10 - springAI - aggressive + rand() % 16 - springTotalTurns) {
-                cameraGlitch.currentAnimation->isPlaying = true;
                 movementCounter = 0;
-                std::cout << "Movement check passed\n";
-                int springDecision = rand() % (4 + aggressive);
+                int springDecision = rand() % (3 + aggressive);
                 switch(springDecision){
                     case 0:
                         // Springtrap fails movement opportunity
-                        std::cout << "Movement opportunity failed" << std::endl;
                         break;
                     case 1:
                         // Springtrap moves forward
+                        if(springtrapOnCamera==lookingAtRegularCamera) cameraBlindness = 1000;
                         springtrapOnCamera = cameraSpringMovementIndex[springtrapOnCamera][0][rand() % cameraSpringMovementIndex[springtrapOnCamera][0].size()];
+                        if(springtrapOnCamera==lookingAtRegularCamera) cameraBlindness = 1000;
                         springSkin = rand() % 2;
+                        cameraBlindness = 1000;
                         springTotalTurns = 0;
-                        std::cout << "Springtrap moved forward to CAM " << springtrapOnCamera + 1 << " with springskin value " << springSkin << std::endl;
                         break;
                     case 2:
                         // Springtrap moves backwards
+                        if(springtrapOnCamera==lookingAtRegularCamera) cameraBlindness = 1000;
                         springtrapOnCamera = cameraSpringMovementIndex[springtrapOnCamera][1][rand() % cameraSpringMovementIndex[springtrapOnCamera][1].size()];
+                        if(springtrapOnCamera==lookingAtRegularCamera) cameraBlindness = 1000;
                         springSkin = rand() % 2;
                         springTotalTurns = 0;
-                        std::cout << "Springtrap moved backwards to CAM" << springtrapOnCamera + 1 << " with springskin value " << springSkin << std::endl;
                         break;
-                    case 4:
-                        // Springtrap moves into vents (yet to be implemented)
-                        std::cout << "Springtrap moved into vents" << std::endl;
+                    case 3:
+                        // Springtrap moves into vents (yet to be implemented)                        
                         break;
                     default:
                         std::cout << "Movement opportunity failed (Invalid Springtrap decision, " << springDecision << ")" << std::endl;
@@ -1963,6 +1961,7 @@ void inGameTick(){
             cameraStatic.opacity = 100;
         }
     }
+
     if(cameraBlindness>0) {
         cameraBlindness -= deltaTime;
         if(cameraStatic.opacity < cameraBlindness / 2) cameraStatic.opacity = cameraBlindness / 2;
