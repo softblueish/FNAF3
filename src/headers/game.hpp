@@ -2,6 +2,7 @@
 #define GAME_HPP
 #include <filesystem>
 #include <vector>
+#include <cmath>
 #include "main.hpp"
 #include "graphics.hpp"
 #include "objects.hpp"

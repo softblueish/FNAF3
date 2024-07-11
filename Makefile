@@ -12,21 +12,23 @@ OBJ_FILES = $(SRC_FILES:%.cpp=$(BUILD_DIR)/%.o)
 
 # Platform-specific commands and settings
 ifeq ($(OS),Windows_NT)
-    MKDIR_P = mkdir $(subst /,\,$(1))
+    MKDIR_P = if not exist $(subst /,\,$(1)) mkdir $(subst /,\,$(1))
     RM = del /Q
     CP = xcopy /s /i
     BIN_EXTENSION = .exe
+    SDL_FLAGS = -static-libgcc -static-libstdc++ -lSDL2main -lSDL2 -lSDL2_image -lSDL2_mixer
 else
     MKDIR_P = mkdir -p $(1)
     RM = rm -f
     CP = cp -r
     BIN_EXTENSION =
+    SDL_FLAGS = -lSDL2_mixer -lSDL2_image -lSDL2
 endif
 
 # Compiler and linker
 CXX = g++
 CXXFLAGS = -c
-LDFLAGS = -lSDL2_mixer -lSDL2_image -lSDL2
+LDFLAGS = $(SDL_FLAGS)
 
 all: compile link
 
@@ -46,7 +48,7 @@ run: all
 
 # Clean build and binary directories
 clean:
-	$(RM) $(BUILD_DIR)/* $(BIN_DIR)/*
+	$(RM) $(BUILD_DIR)\* $(BIN_DIR)\*
 
 # Install the application
 install:
