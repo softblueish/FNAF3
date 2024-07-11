@@ -9,8 +9,8 @@ make
 ```
 ## How to install
 ```
-make compile
-make install
+make
+make install // If on Linux
 make clean
 ```
 You can uninstall with ``make uninstall``. If you only want to run it ``make all`` works too.
