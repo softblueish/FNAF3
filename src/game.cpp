@@ -1140,6 +1140,7 @@ void inGameTick(){
             if(night == 6) springAI = 7;
             if(movementCounter > 10 - springAI - aggressive + rand() % 16 - springTotalTurns) {
                 movementCounter = 0;
+                bool springtrapLured = false;
                 if(lureActive) {
                     for(int i = 0; i < 2; i++){
                         for(int j = 0; j < cameraSpringMovementIndex[springtrapOnCamera + 1][i].size(); j++){
@@ -1148,10 +1149,12 @@ void inGameTick(){
                                 cameraBlindness = 1000;
                                 springSkin = rand() % 2;
                                 springTotalTurns = 0;
+                                springtrapLured = true;
                             }
                         }
                     }
-                } else {
+                } 
+                if(!springtrapLured) {
                     int springDecision = rand() % (3 + aggressive); // 2 always forward
                     switch(springDecision){
                         case 0:
