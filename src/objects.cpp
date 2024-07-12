@@ -5,6 +5,7 @@ Object::Object(){
     this->y = 0;
     this->global_x = 0;
     this->global_y = 0;
+    parallax_coefficient = 1;
     this->width = 0;
     this->height = 0;
     this->opacity = 100;
@@ -26,6 +27,7 @@ Object::Object(Asset *asset, int x, int y, int *global_x, int *global_y, SDL_Win
     this->y = y;
     this->global_x = global_x;
     this->global_y = global_y;
+    parallax_coefficient = 1;
     this->width = asset->width;
     this->height = asset->height;
     this->opacity = 100;
@@ -47,6 +49,7 @@ Object::Object(int x, int y, int *global_x, int *global_y, int width, int height
     this->y = y;
     this->global_x = global_x;
     this->global_y = global_y;
+    parallax_coefficient = 1;
     this->width = width;
     this->height = height;
     animationSpeed = 1;
@@ -62,13 +65,13 @@ Object::Object(int x, int y, int *global_x, int *global_y, int width, int height
 
 void Object::render(){
     if(forceShow==true){
-        SDL_Rect rect = {getPosition(0) * getScreenSize(0)/1024, getPosition(1) * getScreenSize(1)/768, width * getScreenSize(0)/1024, height * getScreenSize(1)/768};
+        SDL_Rect rect = {getPosition(0) * (getScreenSize(0)/1024), getPosition(1) * (getScreenSize(1)/768), width * (getScreenSize(0)/1024), height * (getScreenSize(1)/768)};
         SDL_SetRenderDrawColor(currentRenderer, 255, 0, 255, 255);
         SDL_RenderFillRect(currentRenderer, &rect);
     } else {
         if(!isInvisible) return;
         SDL_SetTextureAlphaMod(currentTexture, (int)(opacity * 2.55));
-        SDL_Rect rect = {getPosition(0) * getScreenSize(0)/1024, getPosition(1) * getScreenSize(1)/768, width * getScreenSize(0)/1024, height * getScreenSize(1)/768};
+        SDL_Rect rect = {getPosition(0) * (getScreenSize(0)/1024), getPosition(1) * (getScreenSize(1)/768), width * (getScreenSize(0)/1024), height * (getScreenSize(1)/768)};
         SDL_RenderCopy(currentRenderer, currentTexture, NULL, &rect);
         SDL_SetTextureAlphaMod(currentTexture, 255);
     }
@@ -76,9 +79,9 @@ void Object::render(){
 
 int Object::getPosition(bool axis){
     if(axis){
-        if(floating == true) return x; else return x + *global_x;
+        if(floating == true) return x; else return x + *global_x * parallax_coefficient;
     } else {
-        if(floating == true) return y; else return y + *global_y;
+        if(floating == true) return y; else return y + *global_y * parallax_coefficient;
     }
 }
 

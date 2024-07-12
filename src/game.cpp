@@ -881,6 +881,7 @@ void setObjectSettings(){
     officeBackground.forceShow = false;
     officeBehindWindow.setVisibility(true);
     officeBehindWindow.forceShow = false;
+    officeBehindWindow.parallax_coefficient = 0.95;
 
     cameraOpenButton.setVisibility(true);
     cameraOpenButton.opacity = 80;

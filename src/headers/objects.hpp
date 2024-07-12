@@ -13,6 +13,7 @@ class Object{
     public:
     int x;
     int y;
+    float parallax_coefficient;
     int width;
     int height;
     int opacity;
